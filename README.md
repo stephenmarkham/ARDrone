@@ -41,3 +41,5 @@ will go forward for 2 seconds then hover.
 
 A pause of at least 5 seconds should be added after the initialization of the ARDrone to ensure it has time to take off.
 A similar pause should be added after the landing call, which will exit the programme.
+
+The Example programme (example.cpp) can be compiled using the cmake using CMakeLists.txt.
