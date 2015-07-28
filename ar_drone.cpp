@@ -25,16 +25,15 @@
 
 using namespace std;
 
+//Print Commands to std out?
+#define printCommand
+
 //Socket Things
 struct sockaddr_in myAddress;
 int socketNum;
 int IP_PORT = 5556;
 //IP Address of the ARDrone
-const char * IP_ADDRESS = "192.168.0.12";//"192.168.2.1";
-
-
-//Max altitude in mm (0 to disable)
-int MAX_ALTITUDE = 0;
+const char * IP_ADDRESS = "192.168.1.1";
 
 double roll = 0;
 double altitude = 0;
@@ -54,31 +53,16 @@ ar_drone::ar_drone()
 	ar_drone::count = 0;
 }
 
-/*
- * Constructor with max altitude specified
- *
- * Creates ar_drone, takes in of max altitude in mm as argument
- *
- */
-ar_drone::ar_drone(int max_altitude)
-{
-	cout << "Setting up ar_drone..." << endl;
-	MAX_ALTITUDE = max_altitude;
-	ar_drone::setUpSocket();
-	ar_drone::count = 0;
-}
 
 /*
  * Constructor with IP Address Specified
  *
- * Creates ar_drone, takes in of max altitude in mm
- * and char * ip address as arguments
+ * Creates ar_drone and takes char * ip address as argument
  */
-ar_drone::ar_drone(int max_altitude, char * ip)
+ar_drone::ar_drone(char * ip)
 {
 	IP_ADDRESS = ip;
 	cout << "Setting up ar_drone..." << endl;
-	MAX_ALTITUDE = max_altitude;
 	ar_drone::setUpSocket();
 	ar_drone::count = 0;
 }
@@ -91,7 +75,10 @@ ar_drone::ar_drone(int max_altitude, char * ip)
  */
 void sendCommand(string com)
 {
-	cout << com << endl;
+
+	#ifdef printCommand 
+		cout << com << endl;
+	#endif
 	if(sendto(socketNum, com.c_str(), com.size(), 0, (struct sockaddr *)&myAddress, sizeof(myAddress))!=com.size()){
       	perror("Mismatch in number of bytes sent");
       	exit(EXIT_FAILURE);
@@ -120,12 +107,12 @@ void ar_drone::setValues(double r, double a, double p, double y)
 
 void ar_drone::forward(double speed)
 {
-	pitch = speed;
+	pitch = -speed;
 }
 
 void ar_drone::backward(double speed)
 {
-	pitch = -speed;
+	pitch = speed;
 }
 
 void ar_drone::right(double speed)
@@ -219,6 +206,8 @@ void ar_drone::setUpSocket()
    	inet_pton(AF_INET,IP_ADDRESS,&myAddress.sin_addr.s_addr);
 
    	myAddress.sin_port=htons(IP_PORT);
+
+   	sleep(1);
  }
 
 /*
@@ -234,12 +223,6 @@ void ar_drone::setUpSocket()
 	landing = false;
 	string s;
 	std::ostringstream commandBuilder;
-	
-	if (MAX_ALTITUDE != 0){
-   		s = "AT*CONFIG=1,\"control:altitude_max\",\"1000\"\r";
-   		sendCommand(s);
-  		count ++;
-   	}
  	
  	commandBuilder << "AT*FTRIM=" << count << "," << "\r";
   	s = commandBuilder.str();
@@ -269,7 +252,7 @@ void ar_drone::land()
  * control
  *
  * control thread that runs constantly
- * sending controls every 30ms (required by the ARDrone)
+ * sending controls every 50ms (required by the ARDrone)
  *
  */
 void ar_drone::control()
@@ -277,6 +260,8 @@ void ar_drone::control()
 	cout << "Setup Complete" << endl;
 	string s;
    	ostringstream commandBuilder;
+
+   	ar_drone::prepareForTakeOff();
 
 	while(1){
 		string p;
@@ -288,9 +273,16 @@ void ar_drone::control()
 		int zM = ar_drone::convertToInt(pitch);
 		int pM = ar_drone::convertToInt(yaw);
 
+		//If Landing
 		if (ar_drone::landing){
-			//LAND
 			command << "AT*REF=" << count << "," << "290717696\r";
+			cout << "Landing" << endl;
+			p = command.str();
+			sendCommand(p);
+			//Sleep to ensure command was sent
+			sleep(1);
+			exit(EXIT_FAILURE);
+
 		}else{
 			if (roll == 0 && pitch == 0 && altitude == 0 && yaw == 0){
 				command << "AT*PCMD=" << ar_drone::count << ",0," << xM << "," << zM << "," << yM << "," << pM << "\r";
@@ -300,6 +292,6 @@ void ar_drone::control()
 		}
 		p = command.str();
 		sendCommand(p);
-		usleep(30);
+		usleep(50000);
 	}
 }

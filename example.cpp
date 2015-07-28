@@ -7,9 +7,12 @@
 
 using namespace std;
 
-ar_drone drone = ar_drone(0, "192.168.1.2");
+ar_drone drone = ar_drone("192.168.2.1");
 
-
+/*
+ * Thread that ensures commands are constantly being sent to drone
+ *
+ */
 void *ARDrone_Controller(void *threadarg)
 {
 	drone.control();
@@ -25,20 +28,25 @@ int main ()
  	pthread_t thread;
 
 	pthread_create(&thread, NULL, ARDrone_Controller, NULL);
-
-	sleep(5);
-
-	drone.forward(0.1);
-
+	//TIME TO ENSURE TAKEOFF IS COMPLETE
+	sleep(7);
+	
+	//Rotate Right for 2 seconds
+	drone.rotateRight(0.5);
 	sleep(2);
 
+	//Rotate Left for 2 seconds
+	drone.rotateLeft(0.5);
+	sleep(2);
+
+	//Hover for 3 seconds
 	drone.hover();
+	sleep(3);
 
-	sleep(2);
-
+	//Land
 	drone.land();
-
-	sleep(1);
+	//NEEDS TIME BEFORE EXITING TO ENSURE THAT COMMAND GETS THROUGH
+	sleep(5);
 
 	return 0;
 }

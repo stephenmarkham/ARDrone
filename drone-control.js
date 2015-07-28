@@ -35,7 +35,7 @@ var stdin = process.stdin;
 stdin.setRawMode( true );
 /*  ********************** */
 
-client.animateLeds('doubleMissile', 5, 5);
+client.animateLeds('doubleMissile', 2, 2);
 stdin.resume();
 stdin.setEncoding( 'utf8' );
 stdin.on( 'data', function( key ){

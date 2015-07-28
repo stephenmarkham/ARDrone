@@ -21,10 +21,7 @@ class ar_drone
         ar_drone();
 
     public:
-       	ar_drone(int max_altitude);
-
-    public:
-        ar_drone(int max_altitude, char * ip);
+        ar_drone(char * ip);
 
     public:
     	void setValues(double x, double y, double z, double p);
