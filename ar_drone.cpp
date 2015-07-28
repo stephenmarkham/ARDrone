@@ -20,6 +20,8 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 #include <iomanip>
+#include <unistd.h>
+#include <sstream>
 
 using namespace std;
 
@@ -34,26 +36,136 @@ const char * IP_ADDRESS = "192.168.0.12";//"192.168.2.1";
 //Max altitude in mm (0 to disable)
 int MAX_ALTITUDE = 0;
 
-double xMove = 0; //Roll
-double yMove = 0; //Altitude
-double zMove = 0; //Pitch
-double pMove = 0; //Yaw
+double roll = 0;
+double altitude = 0;
+double pitch = 0;
+double yaw = 0;
 
+/*
+ * Constructor
+ *
+ * Creates ar_drone
+ *
+ */
 ar_drone::ar_drone()
 {
 	cout << "Setting up ar_drone..." << endl;
 	ar_drone::setUpSocket();
-
 	ar_drone::count = 0;
 }
 
-void ar_drone::setValues(double x, double y, double z, double p)
+/*
+ * Constructor with max altitude specified
+ *
+ * Creates ar_drone, takes in of max altitude in mm as argument
+ *
+ */
+ar_drone::ar_drone(int max_altitude)
 {
-	xMove = x;
-	yMove = y;
-	zMove = z;
-	pMove = p;
+	cout << "Setting up ar_drone..." << endl;
+	MAX_ALTITUDE = max_altitude;
+	ar_drone::setUpSocket();
+	ar_drone::count = 0;
 }
+
+/*
+ * Constructor with IP Address Specified
+ *
+ * Creates ar_drone, takes in of max altitude in mm
+ * and char * ip address as arguments
+ */
+ar_drone::ar_drone(int max_altitude, char * ip)
+{
+	IP_ADDRESS = ip;
+	cout << "Setting up ar_drone..." << endl;
+	MAX_ALTITUDE = max_altitude;
+	ar_drone::setUpSocket();
+	ar_drone::count = 0;
+}
+
+/*
+ * sendCommand
+ *
+ * Sends a command to the ARDrone
+ *
+ */
+void sendCommand(string com)
+{
+	cout << com << endl;
+	if(sendto(socketNum, com.c_str(), com.size(), 0, (struct sockaddr *)&myAddress, sizeof(myAddress))!=com.size()){
+      	perror("Mismatch in number of bytes sent");
+      	exit(EXIT_FAILURE);
+  	}
+}
+
+/*
+ * setValues
+ *
+ * Set the control values for the drone manually
+ *
+ */
+void ar_drone::setValues(double r, double a, double p, double y)
+{
+	roll = r;
+	altitude = a;
+	pitch = p;
+	yaw = y;
+}
+
+
+/*
+ * A variety of control methods, each is a direction
+ * and takes a speed (+ or - 0.05,0.1,0.2 or 0.5) as an argument
+ */
+
+void ar_drone::forward(double speed)
+{
+	pitch = speed;
+}
+
+void ar_drone::backward(double speed)
+{
+	pitch = -speed;
+}
+
+void ar_drone::right(double speed)
+{
+	roll = speed;
+}
+
+void ar_drone::left(double speed)
+{
+	roll = -speed;
+}
+
+void ar_drone::rotateRight(double speed)
+{
+	yaw = speed;
+}
+
+void ar_drone::rotateLeft(double speed)
+{
+	yaw = -speed;
+}
+
+void ar_drone::up(double speed)
+{
+	altitude = speed;
+}
+
+void ar_drone::down(double speed)
+{
+	altitude = -speed;
+}
+
+void ar_drone::hover()
+{
+	roll = 0;
+	altitude = 0;
+	pitch = 0;
+	yaw = 0;
+}
+
 
 /*
  * convertToInt
@@ -121,22 +233,22 @@ void ar_drone::setUpSocket()
 	count = 1;
 	landing = false;
 	string s;
-	ostringstream commandBuilder;
+	std::ostringstream commandBuilder;
 	
 	if (MAX_ALTITUDE != 0){
    		s = "AT*CONFIG=1,\"control:altitude_max\",\"1000\"\r";
-   		ar_drone::sendCommand(s);
+   		sendCommand(s);
   		count ++;
    	}
  	
  	commandBuilder << "AT*FTRIM=" << count << "," << "\r";
   	s = commandBuilder.str();
-  	ar_drone::sendCommand(s);
+  	sendCommand(s);
   	count ++;
 
 	commandBuilder << "AT*REF=" << count << "," << "290718208\r";
 	s = commandBuilder.str();
-	ar_drone::sendCommand(s);
+	sendCommand(s);
 
 	cout << "Taking Off..." << endl;
 }
@@ -152,20 +264,6 @@ void ar_drone::land()
 	landing = true;
 }
 
-/*
- * sendCommand
- *
- * Sends a command to the ARDrone
- *
- */
-void ar_drone::sendCommand(string com)
-{
-	cout << com << endl;
-	if(sendto(socketNum, com.c_str(), com.size(), 0, (struct sockaddr *)&myAddress, sizeof(myAddress))!=com.size()){
-      	perror("Mismatch in number of bytes sent");
-      	exit(EXIT_FAILURE);
-  	}
-}
 
 /*
  * control
@@ -185,23 +283,23 @@ void ar_drone::control()
 		ostringstream command;
 		ar_drone::count = ar_drone::count + 1;
 
-		int xM = ar_drone::convertToInt(xMove);
-		int yM = ar_drone::convertToInt(yMove);
-		int zM = ar_drone::convertToInt(zMove);
-		int pM = ar_drone::convertToInt(pMove);
+		int xM = ar_drone::convertToInt(roll);
+		int yM = ar_drone::convertToInt(altitude);
+		int zM = ar_drone::convertToInt(pitch);
+		int pM = ar_drone::convertToInt(yaw);
 
 		if (ar_drone::landing){
 			//LAND
 			command << "AT*REF=" << count << "," << "290717696\r";
 		}else{
-			if (xMove == 0 && zMove == 0 && yMove == 0 && pMove == 0){
+			if (roll == 0 && pitch == 0 && altitude == 0 && yaw == 0){
 				command << "AT*PCMD=" << ar_drone::count << ",0," << xM << "," << zM << "," << yM << "," << pM << "\r";
 			}else{
 				command << "AT*PCMD=" << ar_drone::count << ",1," << xM << "," << zM << "," << yM << "," << pM << "\r";
 			}
 		}
 		p = command.str();
-		ar_drone::sendCommand(p);
+		sendCommand(p);
 		usleep(30);
 	}
 }

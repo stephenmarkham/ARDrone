@@ -18,7 +18,13 @@ class ar_drone
         bool landing;
 
     public:
-       	ar_drone();
+        ar_drone();
+
+    public:
+       	ar_drone(int max_altitude);
+
+    public:
+        ar_drone(int max_altitude, char * ip);
 
     public:
     	void setValues(double x, double y, double z, double p);
@@ -32,15 +38,38 @@ class ar_drone
     private:
     	void prepareForTakeOff();
 
-    private:
-    	void sendCommand(std::string com);
-
     public:
     	void control();
 
     public:
         void land();
-    	
+    
+    public:
+        void forward(double speed);
+
+    public:
+        void backward(double speed);
+
+    public:
+        void right(double speed);
+
+    public:
+        void left(double speed);
+
+    public:
+        void up(double speed);
+
+    public:
+        void down(double speed);
+
+    public:
+        void rotateRight(double speed);
+
+    public:
+        void rotateLeft(double speed);
+
+    public:
+        void hover();
 
 };
 
