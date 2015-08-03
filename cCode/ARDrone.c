@@ -12,26 +12,33 @@
  * currently speeds have to be sent in as + or - 0.05,0.1,0.2 or 0.5
  */
 
+//Various Standard Includes
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+//For Socket Stuff
 #include <netdb.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <stdio.h>
-#include <stdlib.h>
+
+//For boolean values
 #include <stdbool.h>
 
+//.h file
 #include "ARDrone.h"
 
-//Print Commands to std out?
+
+//Uncomment to print out raw commands being sent (Mainly debugging)
 //#define printCommand
 
 //Socket Variables
 struct sockaddr_in myAddress;
 int socketNum;
-int IP_PORT = 5556;
+int IP_PORT = 5556; //default port number
 const char * IP_ADDRESS = "192.168.1.1"; //default IP
 
 //Control Values
@@ -43,7 +50,7 @@ double yaw = 0;
 //UDP Packet Sequence
 int count = 0;
 
-//Are we performing these actions?
+//Are we performing these actions at the moment?
 bool landing = false;
 bool takingOff = false;
 bool terminate = false;
@@ -71,7 +78,7 @@ void ar_drone(char * ip)
 void sendCommand(char *com)
 {
 	#ifdef printCommand
-		printf("%s\n", com);
+		printf("%s\n", com); //Print command if desired
 	#endif
 
 	if(sendto(socketNum, com, strlen(com), 0, (struct sockaddr *)&myAddress, sizeof(myAddress))!=strlen(com)){
@@ -284,18 +291,25 @@ void control()
 		if (terminate && !landing && !inAir){
 			printf("Terminating Thread\n");
 			break;
+
+		//If gonna terminate early, force land ARDrone, and terminate
 		}else if(terminate && inAir && !landing){
 			printf("ONLY TERMINATE AFTER LANDING!!!\n");
 			printf("FORCING ARDRONE TO LAND\n");
 			landing = true;
 		}
 		
+		//If takeoff called, takeoff
 		if (takingOff) prepareForTakeOff();
 		
+		//If the ARDrone is in the air (Has taken off and not landed)
 		if (inAir){
+			//Increment Sequence
 			count = count + 1;
-			char s[50] = "";
 
+			char s[50] = "";//Command String
+
+			//Convert control values to integer representations
 			int xM = convertToInt(roll);
 			int yM = convertToInt(altitude);
 			int zM = convertToInt(pitch);
@@ -321,14 +335,22 @@ void control()
 				inAir = false;
 
 			}else{
+				//Start of command
 				char str1[50] = "AT*PCMD=";
+
+				//If all 0 (hovering)
 				if (roll == 0 && pitch == 0 && altitude == 0 && yaw == 0){
 					sprintf(s, "%s%d,0,%d,%d,%d,%d\r", str1, count, xM, zM, yM, pM);
+				
+				//Else build command using values
 				}else{
 					sprintf(s, "%s%d,1,%d,%d,%d,%d\r", str1, count, xM, zM, yM, pM);
 				}
 			}
+			//Send command
 			sendCommand(s);
+
+			//Wait 50ms before going again
 			usleep(50000);
 		}
 	}
