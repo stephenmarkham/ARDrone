@@ -19,6 +19,11 @@ void *ARDrone_Controller(void *threadarg)
 	pthread_exit(NULL);
 }
 
+void takeOff()
+{
+	
+}
+
 /*
  * Main Method
  * 
@@ -45,8 +50,11 @@ int main ()
 
 	//Land
 	drone.land();
-	//NEEDS TIME BEFORE EXITING TO ENSURE THAT COMMAND GETS THROUGH
-	sleep(5);
+	
+
+	if(pthread_join(thread, NULL)) {
+      return 2;
+   	}
 
 	return 0;
 }
