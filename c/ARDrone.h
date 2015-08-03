@@ -18,6 +18,7 @@
 
         //Various Controls for the ARDrone. Called from wherever after control
         //thread is running
+        //currently speeds have to be sent in as + or - 0.05,0.1,0.2 or 0.5
         void takeOff();
         
         void land();

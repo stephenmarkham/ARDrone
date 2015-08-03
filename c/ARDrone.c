@@ -10,6 +10,7 @@
  * then can use set values from main thread to control movements
  *
  * currently speeds have to be sent in as + or - 0.05,0.1,0.2 or 0.5
+ *
  */
 
 //Various Standard Includes
@@ -35,11 +36,14 @@
 //Uncomment to print out raw commands being sent (Mainly debugging)
 //#define printCommand
 
+//Uncomment to print out the status updates
+#define printUpdates
+
 //Socket Variables
 struct sockaddr_in myAddress;
 int socketNum;
 int IP_PORT = 5556; //default port number
-const char * IP_ADDRESS = "192.168.1.1"; //default IP
+const char * IP_ADDRESS;
 
 //Control Values
 double roll = 0;
@@ -59,12 +63,16 @@ bool inAir = false;
 /*
  * Constructor with IP Address Specified
  *
- * Creates ar_drone and takes char * ip address as argument
+ * Creates ar_drone and takes char * IP address as argument
+ * @param char * IP (IP address of the ARDrone)
+ *
  */
 void ar_drone(char * ip)
 {
 	IP_ADDRESS = ip;
-	printf("Setting Up Drone @ %s\n", ip);
+	#ifdef printUpdates
+		printf("Setting Up Drone @ %s\n", ip);
+	#endif
 	setUpSocket();
 	count = 0;
 }
@@ -74,6 +82,7 @@ void ar_drone(char * ip)
  *
  * Sends a command to the ARDrone
  *
+ * @param char * command to be sent
  */
 void sendCommand(char *com)
 {
@@ -82,7 +91,8 @@ void sendCommand(char *com)
 	#endif
 
 	if(sendto(socketNum, com, strlen(com), 0, (struct sockaddr *)&myAddress, sizeof(myAddress))!=strlen(com)){
-      	perror("Mismatch in number of bytes sent");
+      	perror("Failed to Send, Exiting...");
+      	//Not the robust method, should probably try re-send and land
       	exit(EXIT_FAILURE);
   	}
 }
@@ -91,7 +101,7 @@ void sendCommand(char *com)
  * setValues
  *
  * Set the control values for the drone manually
- *
+ * @param double roll, double altitude, double pitch, double yaw
  */
 void setValues(double r, double a, double p, double y)
 {
@@ -105,46 +115,79 @@ void setValues(double r, double a, double p, double y)
 /*
  * A variety of control methods, each is a direction
  * and takes a speed (+ or - 0.05,0.1,0.2 or 0.5) as an argument
+ *
+ * @param double speed
  */
-
 void forward(double speed)
 {
 	pitch = -speed;
+	
+	#ifdef printUpdates
+ 		printf("Moving forward\n");
+ 	#endif
 }
 
 void backward(double speed)
 {
 	pitch = speed;
+
+	#ifdef printUpdates
+ 		printf("Moving backward\n");
+ 	#endif
 }
 
 void right(double speed)
 {
 	roll = speed;
+
+	#ifdef printUpdates
+ 		printf("Moving right\n");
+ 	#endif
 }
 
 void left(double speed)
 {
 	roll = -speed;
+
+	#ifdef printUpdates
+ 		printf("Moving left\n");
+ 	#endif
 }
 
 void rotateRight(double speed)
 {
 	yaw = speed;
+
+	#ifdef printUpdates
+ 		printf("Rotating right\n");
+ 	#endif
 }
 
 void rotateLeft(double speed)
 {
 	yaw = -speed;
+
+	#ifdef printUpdates
+ 		printf("Rotating left\n");
+ 	#endif
 }
 
 void up(double speed)
 {
 	altitude = speed;
+
+	#ifdef printUpdates
+ 		printf("Increasing height\n");
+ 	#endif
 }
 
 void down(double speed)
 {
 	altitude = -speed;
+
+	#ifdef printUpdates
+ 		printf("Decreasing height\n");
+ 	#endif
 }
 
 void hover()
@@ -153,6 +196,10 @@ void hover()
 	altitude = 0;
 	pitch = 0;
 	yaw = 0;
+
+	#ifdef printUpdates
+ 		printf("Holding position\n");
+ 	#endif
 }
 
 
@@ -225,7 +272,9 @@ void setUpSocket()
 	//Sequence Number
 	count = 1;
  	
- 	printf("Taking Off\n");
+ 	#ifdef printUpdates
+ 		printf("Taking Off\n");
+ 	#endif
  	
  	//Set Level
  	char s[15] = "AT*FTRIM=1,\r";
@@ -245,7 +294,7 @@ void setUpSocket()
 /*
  * land
  *
- * Call method to land ARDrone.
+ * Call method to land ARDrone
  *
  */
 void land()
@@ -256,7 +305,7 @@ void land()
 /*
  * takeOff
  *
- * Call method to takeOff.
+ * Call method to takeOff
  *
  */
 void takeOff()
@@ -284,18 +333,27 @@ void terminateThread()
  */
 void control()
 {  	
-	printf("Set Up Complete\nWaiting for takeoff command...\n");
+	#ifdef printUpdates
+		printf("Set Up Complete\nWaiting for takeoff command...\n");
+	#endif
+
 	while(1){
 
 		//If terminating, wait till landing finished then exit
 		if (terminate && !landing && !inAir){
-			printf("Terminating Thread\n");
+			#ifdef printUpdates
+				printf("Terminating Thread\n");
+			#endif
 			break;
 
 		//If gonna terminate early, force land ARDrone, and terminate
 		}else if(terminate && inAir && !landing){
-			printf("ONLY TERMINATE AFTER LANDING!!!\n");
-			printf("FORCING ARDRONE TO LAND\n");
+			#ifdef printUpdates
+				printf("ONLY TERMINATE AFTER LANDING!!!\n");
+				printf("FORCING ARDRONE TO LAND\n");
+			#else
+				perror("Forced Landing after early termination call");
+			#endif
 			landing = true;
 		}
 		
@@ -324,13 +382,20 @@ void control()
 				
 				//Send Command and display message
 				sendCommand(s);
-				printf("Landing\n");
+				
+				#ifdef printUpdates
+					printf("Landing\n");
+				#endif
 				
 				//Sleep ensures command is sent before thread terminates
 				sleep(3);
 
-				//Send Message and reset bool values
-				if (!terminate) printf("Waiting for takeoff command...\n");
+				//Send Message
+				#ifdef printUpdates
+					if (!terminate) printf("Waiting for takeoff command...\n");
+				#endif
+
+				//Reset bool values
 				landing = false;
 				inAir = false;
 

@@ -13,15 +13,14 @@
 
 //------ Required ----------
 #include "ARDrone.h"       
-#include <pthread.h>
+#include <pthread.h> // may require compiling with -lpthread
 //--------------------------
 
 
 // ----- Required ---------------------------------
 void *DroneControl()
 {
-   char ip[50] = "192.168.2.1";  //IP address of the ARDrone (default 192.168.1.1)
-   ar_drone(ip);                 //Sets up ARDrone at provided address
+   ar_drone("192.168.2.1");      //Sets up ARDrone at provided IP address (Default is 192.168.1.1)
    control();                    //Starts Control Thread
    return NULL;
 }
@@ -41,6 +40,7 @@ int main ()
 
 
    // The Following is an example of a basic flight
+   // Currently speeds have to be +/- 0.05,0.1,0.2 or 0.5
    
    takeOff();     //take off
    sleep(5);      //Allows time for takeoff and settle before commands come in
@@ -53,17 +53,20 @@ int main ()
 
    land();          //Land
 
+   // End Basic Flight Plan
+
+
+   // ---- Recommended Code ------------------------
+
    terminateThread();   //Terminate Control Thread (should be called ONLY
                         //after landing for the last time)
 
-   // End Basic Flight Plan
-
-   
    // Stops Program terminating early by waiting for control thread 
    // to terminate properly.
    if(pthread_join(ControlThread, NULL)) {
       return 1;
    }
+   //---------------------------------------------
 
    return 0;
 }
