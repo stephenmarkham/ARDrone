@@ -1,5 +1,0 @@
-cmake_minimum_required (VERSION 2.8) 
-project (ARDrone)
-add_library(ar_drone ar_drone.cpp)
-add_executable (run_example example.cpp)
-target_link_libraries(run_example ar_drone)
