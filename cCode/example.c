@@ -51,7 +51,7 @@ int main ()
    hover();         //Hover in place
    sleep(3);        //For 3 Seconds
 
-   //land();          //Land
+   land();          //Land
 
    terminateThread();   //Terminate Control Thread (should be called ONLY
                         //after landing for the last time)
