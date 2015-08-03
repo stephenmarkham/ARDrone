@@ -2,32 +2,28 @@
  * ar_drone.h
  *
  *
- * Stephen Markham 01/04/15 
+ * Stephen Markham 01/08/15 
+ * University of Otago
  */
 
 #ifndef ARDrone_H
 #define ARDrone_H
 
-        typedef struct ARDronerec *ARDrone;
-
+        //Set up ARDrone with IP address (Call in control thread)
         void ar_drone(char * ip );
 
-    	void setValues(double x, double y, double z, double p);
+        //main control thread (Call after ad_drone in control thread)
+        void control();
 
-    	int convertToInt(double f);
 
-    	void setUpSocket();
-
-    	void prepareForTakeOff();
-
-    	void control();
-
-        void land();
-
+        //Various Controls for the ARDrone. Called from wherever after control
+        //thread is running
         void takeOff();
+        
+        void land();
+        
+        void hover();
 
-        void terminateThread();
-    
         void forward(double speed);
 
         void backward(double speed);
@@ -44,6 +40,22 @@
 
         void rotateLeft(double speed);
 
-        void hover();
+
+        //Absolute control of all axis (roll, altitude, pitch, yaw) 
+        //ADVANCED USE ONLY, please read main source code first to understand
+        //How each value affects the ARDrone via the above methods
+        void setValues(double r, double a, double p, double y);
+
+        //Last function call (ONLY AFTER LANDING)
+        void terminateThread();
+
+        //Convert double to required int values (SHOULD NEVER NEED TO CALL)
+        int convertToInt(double f);
+
+        //sets up socket (SHOULD NEVER NEED TO CALL)
+        void setUpSocket();
+
+        //Prepares ARDrone for takeoff (SHOULD NEVER NEED TO CALL)
+        void prepareForTakeOff();
 
 #endif // ar_drone_H

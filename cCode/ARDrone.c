@@ -1,15 +1,16 @@
 /*
-* ARDrone.c
-* 
-* Control ARDrone using c
-*
-* Stephen Markham 01/04/15 
-* 
-* to use create a new thread and run control method from within (has to keep sending commands)
-* then can use set values from main thread to control movements
-*
-* currently speeds have to be sent in as + or - 0.05,0.1,0.2 or 0.5
-*/
+ * ARDrone.c
+ * 
+ * Control ARDrone using c
+ *
+ * Stephen Markham 01/08/15 
+ * University of Otago
+ * 
+ * to use create a new thread and run control method from within (has to keep sending commands)
+ * then can use set values from main thread to control movements
+ *
+ * currently speeds have to be sent in as + or - 0.05,0.1,0.2 or 0.5
+ */
 
 #include <errno.h>
 #include <string.h>
@@ -20,51 +21,33 @@
 #include <arpa/inet.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include "ARDrone.h"
 
 //Print Commands to std out?
-#define printCommand
+//#define printCommand
 
-//Socket Things
-//int socketDescriptor;
-//struct sockaddr_in serverAddress;
-//unsigned short int serverPort;
-
-//IP Address of the ARDrone
-//const char * IP_ADDRESS = "192.168.1.1";
-//unsigned short int IP_PORT = 5556;
-
+//Socket Variables
 struct sockaddr_in myAddress;
 int socketNum;
 int IP_PORT = 5556;
-//IP Address of the ARDrone
-const char * IP_ADDRESS = "192.168.1.1";
+const char * IP_ADDRESS = "192.168.1.1"; //default IP
 
+//Control Values
 double roll = 0;
 double altitude = 0;
 double pitch = 0;
 double yaw = 0;
 
+//UDP Packet Sequence
 int count = 0;
 
-int landing = 0;
-int takingOff = 0;
-int terminate = 0;
-/*
- * Constructor
- *
- * Creates ar_drone
- *
- */
- /*
-ar_drone()
-{
-	printf("Setting Up Drone\n");
-	setUpSocket();
-	count = 0;
-}
-*/
+//Are we performing these actions?
+bool landing = false;
+bool takingOff = false;
+bool terminate = false;
+bool inAir = false;
 
 /*
  * Constructor with IP Address Specified
@@ -74,7 +57,7 @@ ar_drone()
 void ar_drone(char * ip)
 {
 	IP_ADDRESS = ip;
-	printf("Setting Up Drone\n");
+	printf("Setting Up Drone @ %s\n", ip);
 	setUpSocket();
 	count = 0;
 }
@@ -87,13 +70,9 @@ void ar_drone(char * ip)
  */
 void sendCommand(char *com)
 {
-	printf("%s\n", com);
-	/*
-	if (sendto(socketDescriptor, com, strlen(com), 0, (struct sockaddr *) &serverAddress, sizeof(serverAddress)) < 0) {
-		printf("Failed To Send\n\n\n");
-		exit(EXIT_FAILURE);
-	}
-	*/
+	#ifdef printCommand
+		printf("%s\n", com);
+	#endif
 
 	if(sendto(socketNum, com, strlen(com), 0, (struct sockaddr *)&myAddress, sizeof(myAddress))!=strlen(com)){
       	perror("Mismatch in number of bytes sent");
@@ -223,8 +202,9 @@ void setUpSocket()
 
    	myAddress.sin_port=htons(IP_PORT);
 
+   	//sleep ensures it is set up properly before commands get sent
    	sleep(1);
- }
+}
 
 /*
  * prepareForTakeOff
@@ -235,17 +215,24 @@ void setUpSocket()
  */
  void prepareForTakeOff()
 {
+	//Sequence Number
 	count = 1;
-	landing = 0;
  	
+ 	printf("Taking Off\n");
+ 	
+ 	//Set Level
  	char s[15] = "AT*FTRIM=1,\r";
   	sendCommand(s);
   	count ++;
 
+  	//Takeoff Command
   	char p[25] = "AT*REF=2,290718208\r";
 	sendCommand(p);
-
-	printf("Taking Off\n");
+	
+	//Set bool values
+	landing = false;
+	takingOff = false;
+	inAir = true;
 }
 
 /*
@@ -256,7 +243,7 @@ void setUpSocket()
  */
 void land()
 {
-	landing = 1;
+	landing = true;
 }
 
 /*
@@ -267,7 +254,18 @@ void land()
  */
 void takeOff()
 {
-	takingOff = 1;
+	takingOff = true;
+}
+
+/*
+ * terminateThread
+ *
+ * Terminate the control Thread
+ *
+ */
+void terminateThread()
+{
+	terminate = true;
 }
 
 /*
@@ -279,41 +277,59 @@ void takeOff()
  */
 void control()
 {  	
-	printf("Set Up Complete\nWaiting for takeoff command\n");
-	while(takingOff == 0){
-
-	}
-   	prepareForTakeOff();
-
+	printf("Set Up Complete\nWaiting for takeoff command...\n");
 	while(1){
-		count = count + 1;
-		char s[50] = "";
 
-		int xM = convertToInt(roll);
-		int yM = convertToInt(altitude);
-		int zM = convertToInt(pitch);
-		int pM = convertToInt(yaw);
-
-		//If Landing
-		if (landing){
-			char str1[50] = "AT*REF=";
-			char str2[50] = ",290717696\r";
-			sprintf(s, "%s%d%s", str1, count, str2);
-			printf("Landing\n");
-			sendCommand(s);
-			//Sleep to ensure command was sent
-			sleep(1);
-			exit(EXIT_FAILURE);
-
-		}else{
-			char str1[50] = "AT*PCMD=";
-			if (roll == 0 && pitch == 0 && altitude == 0 && yaw == 0){
-				sprintf(s, "%s%d,0,%d,%d,%d,%d\r", str1, count, xM, zM, yM, pM);
-			}else{
-				sprintf(s, "%s%d,1,%d,%d,%d,%d\r", str1, count, xM, zM, yM, pM);
-			}
+		//If terminating, wait till landing finished then exit
+		if (terminate && !landing && !inAir){
+			printf("Terminating Thread\n");
+			break;
+		}else if(terminate && inAir && !landing){
+			printf("ONLY TERMINATE AFTER LANDING!!!\n");
+			printf("FORCING ARDRONE TO LAND\n");
+			landing = true;
 		}
-		sendCommand(s);
-		usleep(50000);
+		
+		if (takingOff) prepareForTakeOff();
+		
+		if (inAir){
+			count = count + 1;
+			char s[50] = "";
+
+			int xM = convertToInt(roll);
+			int yM = convertToInt(altitude);
+			int zM = convertToInt(pitch);
+			int pM = convertToInt(yaw);
+
+			//If Landing
+			if (landing){
+				//Create Landing Command
+				char str1[50] = "AT*REF=";
+				char str2[50] = ",290717696\r";
+				sprintf(s, "%s%d%s", str1, count, str2);
+				
+				//Send Command and display message
+				sendCommand(s);
+				printf("Landing\n");
+				
+				//Sleep ensures command is sent before thread terminates
+				sleep(3);
+
+				//Send Message and reset bool values
+				if (!terminate) printf("Waiting for takeoff command...\n");
+				landing = false;
+				inAir = false;
+
+			}else{
+				char str1[50] = "AT*PCMD=";
+				if (roll == 0 && pitch == 0 && altitude == 0 && yaw == 0){
+					sprintf(s, "%s%d,0,%d,%d,%d,%d\r", str1, count, xM, zM, yM, pM);
+				}else{
+					sprintf(s, "%s%d,1,%d,%d,%d,%d\r", str1, count, xM, zM, yM, pM);
+				}
+			}
+			sendCommand(s);
+			usleep(50000);
+		}
 	}
 }
