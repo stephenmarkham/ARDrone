@@ -1,11 +1,11 @@
 /*
  * ARDrone.c
- * 
+ *
  * Control ARDrone using c
  *
- * Stephen Markham 01/08/15 
+ * Stephen Markham 01/08/15
  * University of Otago
- * 
+ *
  * to use create a new thread and run control method from within (has to keep sending commands)
  * then can use set values from main thread to control movements
  *
@@ -121,7 +121,7 @@ void setValues(double r, double a, double p, double y)
 void forward(double speed)
 {
 	pitch = -speed;
-	
+
 	#ifdef printUpdates
  		printf("Moving forward\n");
  	#endif
@@ -215,7 +215,7 @@ void hover()
  *
  */
 int convertToInt(double f)
-{	
+{
 	if (f == 0.05) return (int)1028443341;
 	else if (f == 0.1) return (int)1036831949;
 	else if (f == 0.2) return (int)1045220557;
@@ -224,7 +224,7 @@ int convertToInt(double f)
 	else if (f == -0.1) return (int)-1110651699;
 	else if (f == -0.2) return (int)-1102263091;
 	else if (f == -0.5) return (int)-1090519040;
-	else return 0;	
+	else return 0;
 }
 
 /*
@@ -234,7 +234,7 @@ int convertToInt(double f)
  *
  */
 void setUpSocket()
-{	
+{
 	memset(&myAddress, 0, sizeof(myAddress));
    	myAddress.sin_family=AF_INET;
 
@@ -263,7 +263,7 @@ void setUpSocket()
 /*
  * prepareForTakeOff
  *
- * Prepares the ARDrone for takeoff 
+ * Prepares the ARDrone for takeoff
  * and sends the take off command
  *
  */
@@ -271,11 +271,11 @@ void setUpSocket()
 {
 	//Sequence Number
 	count = 1;
- 	
+
  	#ifdef printUpdates
  		printf("Taking Off\n");
  	#endif
- 	
+
  	//Set Level
  	char s[15] = "AT*FTRIM=1,\r";
   	sendCommand(s);
@@ -284,7 +284,7 @@ void setUpSocket()
   	//Takeoff Command
   	char p[25] = "AT*REF=2,290718208\r";
 	sendCommand(p);
-	
+
 	//Set bool values
 	landing = false;
 	takingOff = false;
@@ -332,7 +332,7 @@ void terminateThread()
  *
  */
 void control()
-{  	
+{
 	#ifdef printUpdates
 		printf("Set Up Complete\nWaiting for takeoff command...\n");
 	#endif
@@ -356,10 +356,10 @@ void control()
 			#endif
 			landing = true;
 		}
-		
+
 		//If takeoff called, takeoff
 		if (takingOff) prepareForTakeOff();
-		
+
 		//If the ARDrone is in the air (Has taken off and not landed)
 		if (inAir){
 			//Increment Sequence
@@ -379,14 +379,14 @@ void control()
 				char str1[50] = "AT*REF=";
 				char str2[50] = ",290717696\r";
 				sprintf(s, "%s%d%s", str1, count, str2);
-				
+
 				//Send Command and display message
 				sendCommand(s);
-				
+
 				#ifdef printUpdates
 					printf("Landing\n");
 				#endif
-				
+
 				//Sleep ensures command is sent before thread terminates
 				sleep(3);
 
@@ -406,7 +406,7 @@ void control()
 				//If all 0 (hovering)
 				if (roll == 0 && pitch == 0 && altitude == 0 && yaw == 0){
 					sprintf(s, "%s%d,0,%d,%d,%d,%d\r", str1, count, xM, zM, yM, pM);
-				
+
 				//Else build command using values
 				}else{
 					sprintf(s, "%s%d,1,%d,%d,%d,%d\r", str1, count, xM, zM, yM, pM);
