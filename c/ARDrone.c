@@ -60,6 +60,10 @@ bool takingOff = false;
 bool terminate = false;
 bool inAir = false;
 
+//Command Frequency in ms
+int freq = 50; 	//Docs say 	50 for ARDrone 1,
+				//			30 for ARDrone 2.
+
 /*
  * Constructor with IP Address Specified
  *
@@ -415,8 +419,8 @@ void control()
 			//Send command
 			sendCommand(s);
 
-			//Wait 50ms before going again
-			usleep(50000);
+			//Wait desired time before going again
+			usleep(freq * 1000);
 		}
 	}
 }
