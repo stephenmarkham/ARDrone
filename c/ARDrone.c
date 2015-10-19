@@ -61,8 +61,7 @@ bool terminate = false;
 bool inAir = false;
 
 //Command Frequency in ms
-int freq = 50; 	//Docs say 	50 for ARDrone 1,
-				//			30 for ARDrone 2.
+int freq = 50; 	//Docs sugest 50 for ARDrone 1, 30 for ARDrone 2.
 
 /*
  * Constructor with IP Address Specified
